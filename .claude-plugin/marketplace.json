@@ -1,0 +1,17 @@
+{
+  "name": "next-builder-setu",
+  "owner": {
+    "name": "Next Builder",
+    "url": "https://github.com/NextBuilder"
+  },
+  "metadata": {
+    "description": "Next Builder's private tools."
+  },
+  "plugins": [
+    {
+      "name": "setu",
+      "source": "./claude-plugin",
+      "description": "Next Builder's private design toolkit."
+    }
+  ]
+}
