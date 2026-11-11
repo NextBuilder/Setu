@@ -376,20 +376,35 @@ impl Bridge {
                 return Ok(());
             }
         }
+        let mut last = None;
         for port in self.ports.0..=self.ports.1 {
-            if let Ok(listener) = tokio::net::TcpListener::bind(("127.0.0.1", port)).await {
-                let app = router(self.hub.clone());
-                tokio::spawn(async move {
-                    let _ = axum::serve(listener, app).await;
-                });
-                *mode = Mode::Host(port);
-                return Ok(());
+            match tokio::net::TcpListener::bind(("127.0.0.1", port)).await {
+                Ok(listener) => {
+                    let app = router(self.hub.clone());
+                    tokio::spawn(async move {
+                        let _ = axum::serve(listener, app).await;
+                    });
+                    *mode = Mode::Host(port);
+                    return Ok(());
+                }
+                Err(e) => last = Some(e),
             }
         }
+        let reserved = last
+            .as_ref()
+            .is_some_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied);
+        if reserved {
+            bail!(
+                "Windows has reserved ports {}-{}, which EasyEDA's gateway extension needs. Check with `netsh interface ipv4 show excludedportrange protocol=tcp`; restarting the WinNAT service (`net stop winnat` then `net start winnat` in an administrator terminal) usually frees them",
+                self.ports.0,
+                self.ports.1
+            )
+        }
         bail!(
-            "Ports {}-{} are all in use by other programs",
+            "Ports {}-{} are all in use by other programs ({})",
             self.ports.0,
-            self.ports.1
+            self.ports.1,
+            last.map(|e| e.to_string()).unwrap_or_default()
         )
     }
 
@@ -516,9 +531,18 @@ mod tests {
         });
     }
 
+    fn free_port() -> u16 {
+        std::net::TcpListener::bind(("127.0.0.1", 0))
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
     #[tokio::test]
     async fn hosts_the_bridge_and_runs_code_in_easyeda() {
-        let bridge = Bridge::with_ports(49690, 49692);
+        let p = free_port();
+        let bridge = Bridge::with_ports(p, p);
         bridge.start().await.unwrap();
         let port = match *bridge.mode.lock().await {
             Mode::Host(p) => p,
@@ -537,7 +561,7 @@ mod tests {
             .unwrap_err();
         assert!(err.to_string().contains("boom"));
 
-        let second = Bridge::with_ports(49690, 49692);
+        let second = Bridge::with_ports(p, p);
         let shared = second
             .execute("return 2", Duration::from_secs(2))
             .await
@@ -548,7 +572,8 @@ mod tests {
 
     #[tokio::test]
     async fn explains_when_no_window_is_connected() {
-        let bridge = Bridge::with_ports(49695, 49696);
+        let p = free_port();
+        let bridge = Bridge::with_ports(p, p);
         let err = bridge
             .execute("return 1", Duration::from_secs(1))
             .await

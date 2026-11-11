@@ -129,7 +129,7 @@ mod tests {
 
     fn server() -> Server {
         Server::new(Ctx {
-            bridge: Bridge::with_ports(49680, 49681),
+            bridge: Bridge::with_ports(1, 1),
         })
     }
 
