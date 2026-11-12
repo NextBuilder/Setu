@@ -25,7 +25,7 @@ export class Server {
     } catch (e) {
       result = fail(e?.message ?? String(e));
     }
-    if (!result.isError) {
+    if (!result.isError && !args.dry_run) {
       const note = this.guide.note(name);
       if (note) result.content.push({ type: "text", text: note });
     }
