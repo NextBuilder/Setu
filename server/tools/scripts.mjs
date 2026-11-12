@@ -247,7 +247,7 @@ return { board: name, boards: (after || []).map(b => ({ name: b.name, schematic:
 export const IMPORT_CHANGES = String.raw`
 await S.pcb();
 const ok = await eda.pcb_Document.importChanges();
-return { imported: ok, components: (await eda.pcb_PrimitiveComponent.getAll()).length };
+return { dialog_opened: ok, next: ok ? 'EasyEDA shows "Confirm Importing changes": the user (or computer use) clicks Apply Changes. Then check nets with list_nets side pcb.' : 'EasyEDA could not import: open the Log panel; "lacks property Footprint" means the schematic parts have no footprints (repair_imported_project fixes boards imported from KiCad).', components: (await eda.pcb_PrimitiveComponent.getAll()).length };
 `;
 
 export const BOARD_INFO = String.raw`
@@ -341,6 +341,7 @@ if (!pts) {
 }
 const src = [S.mil(pts[0][0]), S.mil(pts[0][1]), 'L'];
 for (const [x, y] of pts.slice(1)) src.push(S.mil(x), S.mil(y));
+src.push(S.mil(pts[0][0]), S.mil(pts[0][1]));
 const poly = eda.pcb_MathPolygon.createPolygon(src);
 if (!poly) throw new Error('Invalid pour outline');
 const p = await eda.pcb_PrimitivePour.create(A.net, S.layer(A.layer), poly, undefined, true, A.name ?? (A.net + '_' + A.layer), A.priority ?? 1, S.mil(0.25), false);
@@ -563,18 +564,72 @@ return { board: box(ob), parts };
 
 export const REBUILD_POURS = String.raw`
 await S.pcb();
-const pours = (await eda.pcb_PrimitivePour.getAll()) || [];
-let rebuilt = 0;
-for (const p of pours) { try { if (await p.rebuildCopperRegion()) rebuilt++; } catch (e) {} }
-return { pours: pours.length, rebuilt };
+const poured = [];
+for (const p of (await eda.pcb_PrimitivePour.getAll()) || []) { try { const x = await p.rebuildCopperRegion(); if (x) poured.push(x); } catch (e) {} }
+let islands = 0;
+if (A.remove_islands !== false && poured.length) {
+  const r = await eda.pcb_Drc.check(true, false, true);
+  const free = new Set();
+  const walk = v => { if (Array.isArray(v)) return v.forEach(walk); if (v && typeof v === 'object' && v.errorType) { if (v.isFree && v.objs) v.objs.forEach(o => free.add(o)); return; } if (v && typeof v === 'object') Object.values(v).forEach(walk); };
+  walk(r);
+  for (const x of poured) {
+    const mine = ((x.getState_PourFills && x.getState_PourFills()) || []).map(f => f.id).filter(id => free.has(id));
+    if (mine.length && await x.deletePourFills(mine)) islands += mine.length;
+  }
+}
+return { pours: poured.length, rebuilt: poured.length, islands_removed: islands };
 `;
 
 export const SET_RULES = String.raw`
 await S.pcb();
 const cur = S.plain(await eda.pcb_Drc.getCurrentRuleConfiguration()) || {};
+const base = cur.config || cur;
 const merge = (t, s) => { for (const k of Object.keys(s)) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && t[k] && typeof t[k] === 'object') merge(t[k], s[k]); else t[k] = s[k]; } return t; };
-const next = merge(cur, A.patch);
-const ok = await eda.pcb_Drc.overwriteCurrentRuleConfiguration(next);
-if (!ok) throw new Error('EasyEDA refused the rule change');
-return { applied: true, configuration: await eda.pcb_Drc.getCurrentRuleConfigurationName() };
+const done = {};
+if (A.patch) {
+  merge(base, A.patch.config || A.patch);
+  if (!(await eda.pcb_Drc.overwriteCurrentRuleConfiguration(base))) throw new Error('EasyEDA refused the rule change');
+  done.rules = true;
+}
+if (A.net_rules) {
+  const rules = S.plain(await eda.pcb_Drc.getNetRules()) || [];
+  const missing = Object.keys(A.net_rules).filter(n => !rules.some(r => r.name === n));
+  for (const r of rules) if (A.net_rules[r.name]) Object.assign(r, A.net_rules[r.name]);
+  if (!(await eda.pcb_Drc.overwriteNetRules(rules))) throw new Error('EasyEDA refused the net rules');
+  done.net_rules = rules.filter(r => A.net_rules[r.name]).map(r => r.name);
+  if (missing.length) done.unknown_nets = missing;
+}
+return Object.assign(done, { configuration: await eda.pcb_Drc.getCurrentRuleConfigurationName() });
+`;
+export const REPAIR_IMPORT = String.raw`
+const out = { steps: [] };
+const boards = S.plain(await eda.dmt_Board.getAllBoardsInfo()) || [];
+const pcbs = S.plain(await eda.dmt_Pcb.getAllPcbsInfo()) || [];
+const schs = S.plain(await eda.dmt_Schematic.getAllSchematicsInfo()) || [];
+const loosePcb = pcbs.find(p => !p.parentBoardName);
+if (loosePcb) {
+  const sch = A.schematic_uuid || (schs[0] && schs[0].uuid);
+  const name = await eda.dmt_Board.createBoard(sch, loosePcb.uuid);
+  out.steps.push(name ? 'linked PCB ' + loosePcb.name + ' with its schematic as board ' + name : 'could not link the PCB: drag it onto the board in the Project panel');
+}
+await S.pcb();
+const fps = new Map((await eda.pcb_PrimitiveComponent.getAll()).map(c => [c.getState_Designator(), S.plain(c.getState_Footprint())]));
+await S.sch();
+const parts = await eda.sch_PrimitiveComponent.getAll(undefined, true);
+let linked = 0; const nofp = [];
+for (const c of parts.filter(c => c.getState_ComponentType() === 'part')) {
+  if ((S.plain(c.getState_Footprint()) || {}).uuid) continue;
+  const fp = fps.get(c.getState_Designator());
+  if (!fp) { nofp.push(c.getState_Designator()); continue; }
+  if (await eda.sch_PrimitiveComponent.modify(c.getState_PrimitiveId(), { otherProperty: { Footprint: fp.uuid } })) linked++;
+}
+out.steps.push('gave ' + linked + ' schematic parts the footprint their PCB part uses');
+if (nofp.length) out.parts_without_pcb_footprint = nofp;
+const flags = parts.filter(c => c.getState_ComponentType() === 'netflag' && /PWR_FLAG/i.test(c.getState_Net() || ''));
+if (flags.length && await eda.sch_PrimitiveComponent.delete(flags.map(c => c.getState_PrimitiveId()))) out.steps.push('removed ' + flags.length + ' KiCad PWR_FLAG markers, which EasyEDA turns into one global net that shorts every rail they touch');
+await eda.sch_Document.save();
+await S.pcb();
+out.import_dialog = await eda.pcb_Document.importChanges();
+out.next = out.import_dialog ? 'EasyEDA shows "Confirm Importing changes": click Apply Changes, then list_nets side pcb and run_drc. Netless vias and pours left from the import show up there; give stitching vias the GND net or delete them, and re-pour.' : 'Import Changes did not open: read the EasyEDA Log panel.';
+return out;
 `;

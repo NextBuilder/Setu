@@ -182,7 +182,11 @@ async function designBoard(ctx, a) {
     if (a.route !== false) {
       const ignore = a.pours !== false ? [ground] : undefined;
       routing = await step("autoroute", S.AUTO_ROUTE, { keep_existing: true, ignore_nets: ignore, priority: "completion" }, 900);
-      if (a.pours !== false) await step("rebuild copper pours", S.REBUILD_POURS, {}, 120);
+      if (a.pours !== false) {
+        await step("rebuild copper pours", S.REBUILD_POURS, { remove_islands: false }, 300);
+        await step(`route ${ground} pads the pours do not reach`, S.AUTO_ROUTE, { keep_existing: true, nets: [ground], priority: "completion" }, 900);
+        await step("rebuild pours and remove copper islands", S.REBUILD_POURS, {}, 300);
+      }
     }
     const drc = await step("design rule check", S.RUN_DRC, { strict: true, limit: 50 }, 300);
     data = await step("read the finished board", S.READ_BOARD, {}, 120);
@@ -345,7 +349,7 @@ export const tools = [
   eda("get_netlist", "The full netlist text of the schematic or the PCB, for checking every connection.", obj({ side: { type: "string", enum: ["schematic", "pcb"], default: "schematic" } }), S.NETLIST, 60),
   eda(
     "import_changes_to_pcb",
-    "Update the PCB from the schematic (EasyEDA's Import Changes): new parts, nets and footprints arrive on the board. Run it after every schematic change and before placing.",
+    "Update the PCB from the schematic (EasyEDA's Import Changes): new parts, nets and footprints arrive on the board. EasyEDA asks to confirm in a dialog (Apply Changes). Run it after every schematic change and before placing.",
     obj({}),
     S.IMPORT_CHANGES,
     120,
@@ -356,6 +360,13 @@ export const tools = [
     obj({ schematic_uuid: str, pcb_uuid: str }, ["schematic_uuid", "pcb_uuid"]),
     S.LINK_BOARD,
     60,
+  ),
+  eda(
+    "repair_imported_project",
+    "Repair a project imported from KiCad (or another EDA) whose PCB has no nets: link a loose PCB to its schematic, give each schematic part the footprint its PCB part uses, remove KiCad PWR_FLAG markers (EasyEDA turns them into one net that shorts the rails), and open Import Changes. Back up first; the user confirms the import dialog.",
+    obj({ schematic_uuid: str }),
+    S.REPAIR_IMPORT,
+    120,
   ),
   eda("get_board_info", "Board summary: outline size (mm), copper layer count, stackup, rule set, parts on each side and net count.", obj({}), S.BOARD_INFO, 30),
   eda(
@@ -474,7 +485,13 @@ export const tools = [
     S.ADD_POUR,
     60,
   ),
-  eda("rebuild_pours", "Rebuild (refill) every copper pour after moving parts or routing, so pours follow the new copper and clear keep-outs.", obj({}), S.REBUILD_POURS, 120),
+  eda(
+    "rebuild_pours",
+    "Rebuild (refill) every copper pour after moving parts or routing, so pours follow the new copper and clear keep-outs, then delete isolated copper islands that DRC reports as free regions (remove_islands false keeps them).",
+    obj({ remove_islands: bool(true) }),
+    S.REBUILD_POURS,
+    300,
+  ),
   eda(
     "add_board_text",
     "Place silkscreen (or copper) text: labels, captions, product name, version. Size 1.0 mm is the smallest every fab prints; bottom-side text is mirrored automatically.",
@@ -523,8 +540,8 @@ export const tools = [
   ),
   eda(
     "set_design_rules",
-    "Change the current rule set: patch is merged into the configuration that get_design_rules returns (same keys and units), then written back. Change only the keys you read; check with run_drc afterwards.",
-    obj({ patch: { type: "object" } }, ["patch"]),
+    "Change the rules. patch is merged into the rule configuration get_design_rules returns (same keys and units; a new named rule such as a 1.5 mm Track rule \"power\" goes under config.Physics.Track). net_rules assigns named rules to nets, e.g. {\"+5V\": {\"Track\": \"power\"}}. Change only keys you read; check with run_drc afterwards.",
+    obj({ patch: { type: "object" }, net_rules: { type: "object" } }),
     S.SET_RULES,
     30,
   ),

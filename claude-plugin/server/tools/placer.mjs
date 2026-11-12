@@ -333,6 +333,7 @@ export function audit(parts, board, opts = {}) {
   const ics = items.filter((i) => i.kind === "active" || i.kind === "module");
   const maxDecap = opts.decoupling_mm ?? 3;
   for (const c of items.filter((i) => i.kind === "cap")) {
+    if (/CP_|Elec|Tantal|Polar|Radial/i.test(`${c.footprint || ""} ${c.name || ""}`) || /^\d+(\.\d+)?\s*[uµ]F?$/i.test(c.name || "") && parseFloat(c.name) >= 10) continue;
     const pwr = c.nets.filter((n) => netKind(n) === "power");
     if (!pwr.length || !c.nets.some((n) => netKind(n) === "ground")) continue;
     const users = ics.filter((u) => u.nets.some((n) => pwr.includes(n)));

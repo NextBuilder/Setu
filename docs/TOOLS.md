@@ -1,6 +1,6 @@
 # SETU tools
 
-SETU's server registers **55 tools**. PCB positions and sizes are in millimetres;
+SETU's server registers **56 tools**. PCB positions and sizes are in millimetres;
 schematic positions are EasyEDA's schematic units (copy them from the listing tools).
 
 Every successful call that starts a design stage adds a `[setu]` line naming the skill to load,
@@ -46,14 +46,15 @@ review agent to run next.
 
 | Tool | What it does |
 |---|---|
-| `import_changes_to_pcb` | Update the PCB from the schematic (EasyEDA's Import Changes): new parts, nets and footprints arrive on the board. Run it after every schematic change and before placing. |
+| `import_changes_to_pcb` | Update the PCB from the schematic (EasyEDA's Import Changes): new parts, nets and footprints arrive on the board. EasyEDA asks to confirm in a dialog (Apply Changes). Run it after every schematic change and before placing. |
+| `repair_imported_project` | Repair a project imported from KiCad (or another EDA) whose PCB has no nets: link a loose PCB to its schematic, give each schematic part the footprint its PCB part uses, remove KiCad PWR_FLAG markers (EasyEDA turns them into one net that shorts the rails), and open Import Changes. Back up first; the user confirms the import dialog. |
 | `link_pcb_to_schematic` | Put a PCB and its schematic into one board so they share nets (needed after importing a PCB on its own, e.g. from KiCad: such a PCB has no nets, DRC passes without checking connections and Import Changes cannot reach it). Uuids come from get_project_info. Run import_changes_to_pcb afterwards. |
 | `get_board_info` | Board summary: outline size (mm), copper layer count, stackup, rule set, parts on each side and net count. |
 | `add_board_outline` | Draw the board outline as a rectangle in mm with optional rounded corners (replaces the existing outline unless replace is false). Size the board from its parts first; 2-3 mm corner radius looks finished. |
 | `add_mounting_holes` | Place mounting holes (mm): M3 = 3.2 mm drill with a 6 mm plated pad by default; set plated false for a bare hole, or a net (GND) to ground the pad. |
 | `set_copper_layers` | Set the PCB's copper layer count (2, 4, 6, ...). |
 | `get_design_rules` | The PCB's current rule set: clearances, track widths, via sizes, net classes, differential pairs and net rules. Read it before set_design_rules. |
-| `set_design_rules` | Change the current rule set: patch is merged into the configuration that get_design_rules returns (same keys and units), then written back. Change only the keys you read; check with run_drc afterwards. |
+| `set_design_rules` | Change the rules. patch is merged into the rule configuration get_design_rules returns (same keys and units; a new named rule such as a 1.5 mm Track rule "power" goes under config.Physics.Track). net_rules assigns named rules to nets, e.g. {"+5V": {"Track": "power"}}. Change only keys you read; check with run_drc afterwards. |
 | `create_net_class` | Create a net class (or add nets to an existing one), e.g. POWER for wide tracks. |
 | `create_differential_pair` | Declare a differential pair (USB D+/D-, Ethernet, ...) so EasyEDA routes and checks it as a pair. |
 
@@ -75,7 +76,7 @@ review agent to run next.
 | `add_track` | Route a copper track as a polyline of [x, y] points in mm on one layer, for one net. Size power widths with calc_trace_width first. |
 | `add_vias` | Place vias (mm). Defaults 0.3 mm drill / 0.6 mm diameter, which every fab builds. |
 | `add_copper_pour` | Add a copper pour (zone) for a net on a layer. Without points it covers the board outline, inset by inset_mm. |
-| `rebuild_pours` | Rebuild (refill) every copper pour after moving parts or routing, so pours follow the new copper and clear keep-outs. |
+| `rebuild_pours` | Rebuild (refill) every copper pour after moving parts or routing, so pours follow the new copper and clear keep-outs, then delete isolated copper islands that DRC reports as free regions (remove_islands false keeps them). |
 | `auto_route` | EasyEDA's autorouter. Route power and sensitive nets by hand first, then route the rest here with keep_existing true. Optional: nets, ignore_nets, layers, priority completion/speed. |
 | `delete_pcb_items` | Delete PCB tracks, vias, pours, texts or footprints by id, or rip up every track and via of a net. |
 

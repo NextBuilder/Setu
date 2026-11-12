@@ -63,7 +63,7 @@ test("design_board runs the whole layout against EasyEDA and reports every step"
   const r = await server.call("design_board", { mounting_holes: true });
   const report = JSON.parse(r.content[0].text);
   assert.equal(r.isError, false, r.content[0].text);
-  assert.deepEqual(seen, ["outline", "place", "route"]);
+  assert.deepEqual(seen, ["outline", "place", "route", "route"]);
   assert.ok(report.steps.every((s) => s.ok));
   assert.equal(report.placement.unplaced.length, 0);
   assert.equal(report.layout_audit.errors, 0, JSON.stringify(report.layout_audit.findings));
