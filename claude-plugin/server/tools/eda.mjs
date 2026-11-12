@@ -350,6 +350,13 @@ export const tools = [
     S.IMPORT_CHANGES,
     120,
   ),
+  eda(
+    "link_pcb_to_schematic",
+    "Put a PCB and its schematic into one board so they share nets (needed after importing a PCB on its own, e.g. from KiCad: such a PCB has no nets, DRC passes without checking connections and Import Changes cannot reach it). Uuids come from get_project_info. Run import_changes_to_pcb afterwards.",
+    obj({ schematic_uuid: str, pcb_uuid: str }, ["schematic_uuid", "pcb_uuid"]),
+    S.LINK_BOARD,
+    60,
+  ),
   eda("get_board_info", "Board summary: outline size (mm), copper layer count, stackup, rule set, parts on each side and net count.", obj({}), S.BOARD_INFO, 30),
   eda(
     "add_board_outline",

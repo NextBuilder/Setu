@@ -298,6 +298,7 @@ export function audit(parts, board, opts = {}) {
   const add = (severity, rule, refs, message, fix) => findings.push({ severity, rule, parts: refs, message, fix });
   const inset = opts.edge_clearance_mm ?? 0.3;
   if (!board) add("error", "outline", [], "The board has no outline.", "Draw one with add_board_outline (or design_board).");
+  if (items.length && !items.some((i) => i.nets.length)) add("error", "no_nets", [], "No pad on the PCB has a net, so the board is not connected to its schematic: DRC cannot see unrouted connections and placement cannot follow the circuit.", "Link the PCB to its schematic (link_pcb_to_schematic), then import_changes_to_pcb.");
   for (const it of items) {
     if (it.kind === "hole" || it.kind === "fiducial") continue;
     if (board) {
@@ -316,7 +317,18 @@ export function audit(parts, board, opts = {}) {
       const a = items[i];
       const b = items[j];
       if (a.layer !== b.layer && a.layer && b.layer) continue;
-      if (Math.abs(a.cx - b.cx) * 2 < a.w + b.w - 0.05 && Math.abs(a.cy - b.cy) * 2 < a.h + b.h - 0.05) add("error", "overlap", [a.designator, b.designator], `${a.designator} and ${b.designator} overlap.`, "Spread them apart.");
+      if (a.copper && b.copper) {
+        const ox = Math.min(a.copper.maxX, b.copper.maxX) - Math.max(a.copper.minX, b.copper.minX);
+        const oy = Math.min(a.copper.maxY, b.copper.maxY) - Math.max(a.copper.minY, b.copper.minY);
+        if (ox > 0.05 && oy > 0.05) {
+          add("error", "overlap", [a.designator, b.designator], `${a.designator} and ${b.designator} have overlapping pads.`, "Spread them apart.");
+          continue;
+        }
+      }
+      const dx = (a.w + b.w) / 2 - Math.abs(a.cx - b.cx);
+      const dy = (a.h + b.h) / 2 - Math.abs(a.cy - b.cy);
+      if (!(a.copper && b.copper) && dx > 0.05 && dy > 0.05) add("error", "overlap", [a.designator, b.designator], `${a.designator} and ${b.designator} overlap.`, "Spread them apart.");
+      else if (dx > 1 && dy > 1) add("warning", "body_overlap", [a.designator, b.designator], `${a.designator} and ${b.designator} overlap by ${Math.min(dx, dy).toFixed(1)} mm including silkscreen and body outline.`, "Check in view_design that the bodies do not collide; move one if they do.");
     }
   const ics = items.filter((i) => i.kind === "active" || i.kind === "module");
   const maxDecap = opts.decoupling_mm ?? 3;

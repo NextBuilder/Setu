@@ -79,13 +79,19 @@ S.device = async a => {
 export const PROJECT_INFO = String.raw`
 const p = await eda.dmt_Project.getCurrentProjectInfo();
 const pages = await eda.dmt_Schematic.getAllSchematicPagesInfo();
+const slim = v => JSON.parse(JSON.stringify(v ?? null, (k, x) => (k === 'titleBlockData' ? undefined : x)));
+const boards = (slim(await eda.dmt_Board.getAllBoardsInfo()) || []).map(b => ({ name: b.name, uuid: b.uuid, schematic: b.schematic ? b.schematic.uuid : null, pcb: b.pcb ? b.pcb.uuid : null }));
+const pcbs = (slim(await eda.dmt_Pcb.getAllPcbsInfo()) || []).map(x => ({ uuid: x.uuid, name: x.name, board: x.parentBoardName || null }));
+const warnings = [];
+for (const x of pcbs) if (!x.board) warnings.push('PCB "' + x.name + '" is not in a board with a schematic, so it has no nets: Import Changes cannot reach it and DRC cannot see unrouted connections. Link it to its schematic (link_pcb_to_schematic) before layout work.');
 return {
-  project: S.plain(p),
-  boards: S.plain(await eda.dmt_Board.getAllBoardsInfo()),
-  schematics: S.plain(await eda.dmt_Schematic.getAllSchematicsInfo()),
+  project: p ? { uuid: p.uuid, name: p.friendlyName || p.name, folder: p.teamUuid } : null,
+  boards,
+  schematics: (slim(await eda.dmt_Schematic.getAllSchematicsInfo()) || []).map(x => ({ uuid: x.uuid, name: x.name, board: x.parentBoardName })),
   schematicPages: (pages || []).map(x => ({ uuid: x.uuid, name: x.name, schematic: x.parentSchematicUuid })),
-  pcbs: S.plain(await eda.dmt_Pcb.getAllPcbsInfo()),
-  currentDocument: S.plain(await S.doc())
+  pcbs,
+  currentDocument: S.plain(await S.doc()),
+  warnings
 };
 `;
 
@@ -214,13 +220,28 @@ if (A.side === 'pcb') {
   return (nets || []).map(n => ({ net: n.net, length_mm: n.length == null ? null : S.mm(n.length) }));
 }
 await S.sch();
-return S.plain(await eda.sch_Net.getAllNets());
+const nets = S.plain(await eda.sch_Net.getAllNets()) || [];
+if (nets.length) return nets;
+const names = new Set();
+for (const w of (await eda.sch_PrimitiveWire.getAll()) || []) if (w.getState_Net()) names.add(w.getState_Net());
+for (const c of (await eda.sch_PrimitiveComponent.getAll(undefined, true)) || []) { const n = c.getState_Net && c.getState_Net(); if (n) names.add(n); }
+return [...names].sort().map(net => ({ net, source: 'wire and flag names' }));
 `;
 
 export const NETLIST = String.raw`
 if (A.side === 'pcb') { await S.pcb(); return await eda.pcb_Net.getNetlist(); }
 await S.sch();
-return await eda.sch_Netlist.getNetlist();
+try { return await eda.sch_Netlist.getNetlist(); } catch (e) {
+  return { error: 'EasyEDA could not build the schematic netlist (' + e.message + '). Use list_nets and get_component_pins instead; if the project has a PCB, import_changes_to_pcb and get_netlist with side pcb.' };
+}
+`;
+
+export const LINK_BOARD = String.raw`
+const before = await eda.dmt_Board.getAllBoardsInfo();
+const name = await eda.dmt_Board.createBoard(A.schematic_uuid, A.pcb_uuid);
+if (!name) throw new Error('EasyEDA did not link them. In the Project panel, drag the PCB onto the board that holds the schematic, or create a new board with both.');
+const after = await eda.dmt_Board.getAllBoardsInfo();
+return { board: name, boards: (after || []).map(b => ({ name: b.name, schematic: b.schematic ? b.schematic.uuid : null, pcb: b.pcb ? b.pcb.uuid : null })), before: (before || []).length };
 `;
 
 export const IMPORT_CHANGES = String.raw`
@@ -526,7 +547,15 @@ for (const c of await eda.pcb_PrimitiveComponent.getAll()) {
   let b;
   try { b = await eda.pcb_Primitive.getPrimitivesBBox([p.id]); } catch (e) {}
   p.bbox = box(b);
-  p.pads = (c.getState_Pads() || []).map(x => ({ net: x.net, number: x.padNumber }));
+  let pins = [];
+  try { pins = (await eda.pcb_PrimitiveComponent.getAllPinsByPrimitiveId(p.id)) || []; } catch (e) {}
+  const raw = pins.length ? pins.map(x => ({ net: x.getState_Net ? x.getState_Net() : x.net, number: x.getState_PadNumber ? x.getState_PadNumber() : x.padNumber, x: x.getState_X ? x.getState_X() : x.x, y: x.getState_Y ? x.getState_Y() : x.y, pad: x.getState_Pad ? x.getState_Pad() : x.pad })) : (c.getState_Pads() || []).map(x => ({ net: x.net, number: x.padNumber }));
+  p.pads = raw.map(x => ({ net: x.net || '', number: x.number }));
+  const pts = raw.filter(x => typeof x.x === 'number');
+  if (pts.length) {
+    const r = x => (Array.isArray(x.pad) ? Math.max(Number(x.pad[1]) || 0, Number(x.pad[2]) || 0) : 0) / 2;
+    p.copper = { minX: S.mm(Math.min(...pts.map(x => x.x - r(x)))), maxX: S.mm(Math.max(...pts.map(x => x.x + r(x)))), minY: S.mm(Math.min(...pts.map(x => x.y - r(x)))), maxY: S.mm(Math.max(...pts.map(x => x.y + r(x)))) };
+  }
   parts.push(p);
 }
 return { board: box(ob), parts };

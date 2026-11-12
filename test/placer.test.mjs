@@ -94,3 +94,13 @@ test("audit finds overlaps, off-board parts and far decoupling", () => {
   assert.ok(lone.findings.some((f) => f.rule === "decoupling"));
   assert.ok(lone.findings.some((f) => f.rule === "overlap"));
 });
+
+test("audit flags a PCB without nets and judges overlap by pads when it has them", () => {
+  const bare = audit([part("U1", 10, 10, 5, 5, []), part("C1", 20, 20, 1.6, 0.8, [])], board);
+  assert.ok(bare.findings.some((f) => f.rule === "no_nets"));
+  const a = { ...part("SW1", 10, 10, 8, 10, ["A", "B"]), copper: { minX: 7, maxX: 13, minY: 7, maxY: 9 } };
+  const b = { ...part("C3", 13.5, 10, 2, 3.4, ["A", "GND"]), copper: { minX: 13, maxX: 14, minY: 9.5, maxY: 10.5 } };
+  const r = audit([a, b], board);
+  assert.ok(!r.findings.some((f) => f.rule === "overlap"));
+  assert.ok(r.findings.some((f) => f.rule === "body_overlap"));
+});

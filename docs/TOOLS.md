@@ -1,6 +1,6 @@
 # SETU tools
 
-SETU's server registers **54 tools**. PCB positions and sizes are in millimetres;
+SETU's server registers **55 tools**. PCB positions and sizes are in millimetres;
 schematic positions are EasyEDA's schematic units (copy them from the listing tools).
 
 Every successful call that starts a design stage adds a `[setu]` line naming the skill to load,
@@ -47,6 +47,7 @@ review agent to run next.
 | Tool | What it does |
 |---|---|
 | `import_changes_to_pcb` | Update the PCB from the schematic (EasyEDA's Import Changes): new parts, nets and footprints arrive on the board. Run it after every schematic change and before placing. |
+| `link_pcb_to_schematic` | Put a PCB and its schematic into one board so they share nets (needed after importing a PCB on its own, e.g. from KiCad: such a PCB has no nets, DRC passes without checking connections and Import Changes cannot reach it). Uuids come from get_project_info. Run import_changes_to_pcb afterwards. |
 | `get_board_info` | Board summary: outline size (mm), copper layer count, stackup, rule set, parts on each side and net count. |
 | `add_board_outline` | Draw the board outline as a rectangle in mm with optional rounded corners (replaces the existing outline unless replace is false). Size the board from its parts first; 2-3 mm corner radius looks finished. |
 | `add_mounting_holes` | Place mounting holes (mm): M3 = 3.2 mm drill with a 6 mm plated pad by default; set plated false for a bare hole, or a net (GND) to ground the pad. |

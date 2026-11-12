@@ -6,7 +6,7 @@ const SECTIONS = [
   ["Connection and project", ["setu_status", "select_window", "get_project_info", "open_document", "save_project", "backup_project"]],
   ["Parts", ["search_parts", "get_parts_by_lcsc"]],
   ["Schematic", ["list_schematic_components", "get_component_pins", "place_schematic_component", "modify_schematic_component", "add_wires", "add_net_flags", "add_schematic_text", "delete_schematic_items", "run_erc", "list_nets", "get_netlist", "export_schematic"]],
-  ["Board setup", ["import_changes_to_pcb", "get_board_info", "add_board_outline", "add_mounting_holes", "set_copper_layers", "get_design_rules", "set_design_rules", "create_net_class", "create_differential_pair"]],
+  ["Board setup", ["import_changes_to_pcb", "link_pcb_to_schematic", "get_board_info", "add_board_outline", "add_mounting_holes", "set_copper_layers", "get_design_rules", "set_design_rules", "create_net_class", "create_differential_pair"]],
   ["Whole-board layout", ["design_board", "smart_place", "audit_layout"]],
   ["Placement and routing", ["list_pcb_components", "set_component_placements", "auto_place", "add_track", "add_vias", "add_copper_pour", "rebuild_pours", "auto_route", "delete_pcb_items"]],
   ["Silkscreen, checks and files", ["add_board_text", "run_drc", "view_design", "export_manufacturing"]],

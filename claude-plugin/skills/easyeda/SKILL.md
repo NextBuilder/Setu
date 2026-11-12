@@ -22,6 +22,11 @@ Call `setu_status` at the start of every session.
 Never guess a project's contents: read it with `get_project_info`,
 `list_schematic_components`, `list_pcb_components` and `get_board_info`.
 
+If `get_project_info` warns that a PCB is not in a board with its schematic (typical after
+importing a KiCad or Altium PCB on its own), its pads have no nets: DRC "passes" without
+checking a single connection. Back up, then `link_pcb_to_schematic` and `import_changes_to_pcb`
+before any layout or review work. `audit_layout` reports the same problem as `no_nets`.
+
 ## 2. The rules that protect the user's work
 
 1. **Never edit .epro / .eprj files or EasyEDA document source as text.** Only SETU tools (or

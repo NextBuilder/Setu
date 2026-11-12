@@ -9,7 +9,7 @@ import { render } from "../scripts/tools-doc.mjs";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (p) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
 const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
-const PARAMS = new Set(["ignore_nets", "keep_existing", "manufacturer_part", "supplier_part", "in_bom", "in_pcb", "output_dir", "corner_radius_mm", "timeout_s", "dry_run", "mounting_holes", "ground_net", "width_mm", "height_mm"]);
+const PARAMS = new Set(["ignore_nets", "keep_existing", "manufacturer_part", "supplier_part", "in_bom", "in_pcb", "output_dir", "corner_radius_mm", "timeout_s", "schematic_uuid", "pcb_uuid", "dry_run", "mounting_holes", "ground_net", "width_mm", "height_mm"]);
 
 test("TOOLS.md matches the server and the version matches package.json", () => {
   assert.equal(read(join(root, "docs/TOOLS.md")), render());
