@@ -1,6 +1,6 @@
 # Setu — Privacy Policy
 
-Effective 11 November 2026. Applies to the Setu server and its plugin.
+Effective 12 November 2026. Applies to the Setu server and its plugin.
 
 ## Data collection
 
@@ -21,8 +21,7 @@ developer receives nothing from it.
 
 ## Third-party sharing
 
-SETU itself sends nothing to anyone. The plugin's launcher downloads SETU's server once from
-this project's GitHub releases (github.com/NextBuilder/Setu) if it is not installed yet.
+SETU itself sends nothing to anyone and downloads nothing: the server ships inside the plugin.
 
 ## Data retention
 

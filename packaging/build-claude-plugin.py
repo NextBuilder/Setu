@@ -35,7 +35,7 @@ def front_matter(text, keep=None, drop=None):
 
 
 def version():
-    return re.search(r'^version = "(.*)"', (ROOT / "Cargo.toml").read_text(), re.M).group(1)
+    return json.loads((ROOT / "package.json").read_text())["version"]
 
 
 def tool_count():
@@ -58,9 +58,12 @@ def build(out):
         "keywords": ["next-builder"],
     }
     (out / ".claude-plugin" / "plugin.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    mcp = {"mcpServers": {"setu": {"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/start.mjs"]}}}
+    mcp = {"mcpServers": {"setu": {"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/server/setu.mjs"]}}}
     (out / ".mcp.json").write_text(json.dumps(mcp, indent=2) + "\n")
-    (out / "start.mjs").write_text((TEMPLATE / "start.mjs").read_text().replace("{VERSION}", version()))
+    for f in sorted((ROOT / "server").rglob("*.mjs")):
+        dst = out / "server" / f.relative_to(ROOT / "server")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
     shutil.copy(ROOT / "docs" / "PRIVACY.md", out / "PRIVACY.md")
     shutil.copy(ROOT / "LICENSE", out / "LICENSE")
     shutil.copy(ROOT / "NOTICE.md", out / "NOTICE.md")

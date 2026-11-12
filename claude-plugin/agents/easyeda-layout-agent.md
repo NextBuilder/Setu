@@ -27,19 +27,21 @@ form factor, layer count, captions for connectors, buttons and LEDs, product nam
 1. `setu_status`, `backup_project`.
 2. `import_changes_to_pcb`; `list_pcb_components` — every part arrived.
 3. Setup: `add_board_outline` sized from the parts (45–60 % fill, rounded corners),
-   `add_mounting_holes`, `set_copper_layers`, rules read with `get_design_rules`, net classes from
+   `add_mounting_holes`, `set_copper_layers`, rules read with `get_design_rules` and fixed with
+   `set_design_rules`, net classes from
    `calc_trace_width` (`create_net_class`), pairs (`create_differential_pair`).
-4. Placement with `set_component_placements`: connectors on edges first (locked), then each IC
-   with its own passives as a tight block, switching-loop capacitors at the pins in the
+4. Placement: `smart_place` first (connectors on edges, modules on an edge, each IC with its
+   passives), then `audit_layout` and `view_design`, and correct by hand with
+   `set_component_placements`: connectors locked, each IC with its own passives as a tight block, switching-loop capacitors at the pins in the
    datasheet's order, identical channels as copies, a 2.6 mm lane free beside every connector.
    `view_design` and `run_drc`: no overlaps before any copper.
 5. Routing: power loops, crystal, RF and pairs by hand (`add_track`, `add_vias`); ground pours
    (`add_copper_pour`) with ground vias at every ground pad; `auto_route` (keep_existing true) for
-   the rest; review every autorouted net.
+   the rest; `rebuild_pours`; review every autorouted net.
 6. Silkscreen with `add_board_text`: pin labels, captions, designators at 1.0 mm, product block
    (easyeda-pro-silkscreen house style).
-7. Self-check until clean: `run_drc` zero violations, `view_design` against the layout review and
-   the looks review.
+7. Self-check until clean: `run_drc` zero violations, `audit_layout` with no errors, `view_design`
+   against the layout review and the looks review.
 8. `save_project`, `backup_project` named "layout complete".
 
 ## Report

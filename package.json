@@ -1,0 +1,17 @@
+{
+  "name": "setu",
+  "version": "0.2.0",
+  "description": "Next Builder's private design toolkit.",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/setu.mjs",
+    "test": "node --test",
+    "docs": "node scripts/tools-doc.mjs",
+    "plugin": "python3 packaging/build-claude-plugin.py"
+  }
+}

@@ -23,14 +23,14 @@ numbers, and easyeda-board-craft has the finishing style.
 
 1. `backup_project`, then place connectors, mounting parts and the antenna side by hand with
    `set_component_placements`; lock them.
-2. `auto_place` for a first draft of the rest, or place by hand in the order below. Either way,
-   review with `view_design` and correct every block: each IC with its decoupling at its pins,
+2. `smart_place` for the rest (it follows the order below), or place by hand. Either way,
+   check with `audit_layout` and `view_design` and correct every block: each IC with its decoupling at its pins,
    switching loops tight, the rest beside what it connects to, rows aligned, a 2.6 mm lane free
    beside every connector for its labels.
 3. Route by hand the nets no autorouter should decide: power loops, RF feed, crystal, USB and
    other pairs (`add_track`, `add_vias`, widths from `calc_trace_width` and `calc_impedance`).
 4. `auto_route` with `keep_existing: true` for the remaining signals; review every net it drew.
-5. `add_copper_pour` (ground), ground vias, then `add_board_text` for the silkscreen
+5. `add_copper_pour` (ground), ground vias, `rebuild_pours`, then `add_board_text` for the silkscreen
    (easyeda-pro-silkscreen skill).
 6. `run_drc` until zero violations, and `view_design` against the
    [layout review](references/layout-review.md) until nothing is open.
@@ -154,7 +154,9 @@ An autorouter is fast and useful for the boring 60 %, never for the critical 40 
 ## Speed habits
 
 - Let EasyEDA do the bulk where it is safe: `auto_route` for ordinary signals after the
-  critical nets are done; `auto_place` only as a draft.
+  critical nets are done; `smart_place` for placement, `auto_place` only as a draft.
+- For a reviewed schematic and an ordinary board, `design_board` does outline, placement,
+  pours, routing and checks in one call; then fix what its report lists.
 - Batch: place with `set_component_placements`, read pads with `get_component_pins`, route
   pad-to-pad with `add_track`, rather than one move at a time.
 - Read before you route: `get_component_pins` gives exact pad centres, so tracks start on the

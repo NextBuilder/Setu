@@ -24,7 +24,7 @@ with SETU tools. All PCB positions and sizes are in mm.
 | Holes | `add_mounting_holes` | M3 = 3.2 mm drill; ≥ 3 mm from parts and copper of other nets |
 | Layers | `set_copper_layers` | 2 for simple boards; 4 when a full ground plane, USB/RF or dense routing needs it |
 | Stackup | `list_stackups`, `get_board_info` | Choose a fab stackup before impedance work |
-| Rules | `get_design_rules` | Set clearances, widths, vias in the Design Rules dialog; defaults that build at any fab: 0.15 mm track/gap, 0.3/0.6 mm via |
+| Rules | `get_design_rules`, `set_design_rules` | Read the rule set, then patch only the keys you read; defaults that build at any fab: 0.15 mm track/gap, 0.3/0.6 mm via. A via rule whose minimum hole is larger than its minimum diameter (common after a KiCad import) fails every via |
 | Net classes | `create_net_class` | POWER (wide), HIGH_CURRENT, USB (pair) — widths from `calc_trace_width` |
 | Pairs | `create_differential_pair` | USB D+/D−, Ethernet, LVDS |
 
@@ -32,8 +32,14 @@ with SETU tools. All PCB positions and sizes are in mm.
 
 - `set_component_placements` moves, rotates, flips (layer top/bottom) and locks many parts in
   one call. Place connectors first, then each IC with its passives, then the rest.
-- `auto_place` exists, but its result is a draft: always review it with `view_design` and fix it
-  by hand against the easyeda-pro-layout placement order.
+- `smart_place` places the whole board in one call: connectors and switches on edges, wireless
+  modules on an edge, ICs where the schematic put them, decoupling and crystals at their IC, the
+  rest beside what it connects to. `keep` and locked parts stay put; `dry_run` shows the plan.
+- `audit_layout` scores the placement (off-board, edge clearance, overlaps, edge parts,
+  decoupling distance, crystals) and lists each fix. Run it after every placement change.
+- `design_board` chains the whole layout: outline, holes, `smart_place`, ground pours,
+  autoroute, `rebuild_pours`, DRC, audit. Its report lists what is left to fix by hand.
+- EasyEDA's own `auto_place` is a draft only: review it with `view_design` and fix it by hand.
 - Lock connectors, mounting parts and finished blocks (`locked: true`) so later steps cannot
   move them.
 - After placement: `view_design`, and `run_drc` for overlaps and clearance before any copper.

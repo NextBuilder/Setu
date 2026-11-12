@@ -110,7 +110,8 @@ Follow the easyeda-pro-layout floor plan and placement order: fixed mechanical p
 (connectors at their edges, buttons, mounting holes) → RF module with its antenna over the edge
 → MCU → power stage with its input loop tight → decoupling beside the pins it serves →
 everything else grouped by function, sensors away from heat. Keep a 2.6 mm lane free beside
-every connector for its labels. `auto_place` is only a draft.
+every connector for its labels. `smart_place` follows this order and `audit_layout` checks it;
+`auto_place` is only a draft.
 
 **Gate 4 exit:** `run_drc` shows no overlapping parts, every switching IC has its loop
 capacitors at its pins, and `view_design` reviewed against the layout review finds nothing open.

@@ -1,10 +1,10 @@
 # SETU tools
 
-SETU's server registers **49 tools**. PCB positions and sizes are in millimetres;
+SETU's server registers **54 tools**. PCB positions and sizes are in millimetres;
 schematic positions are EasyEDA's schematic units (copy them from the listing tools).
 
 Every successful call that starts a design stage adds a `[setu]` line naming the skill to load,
-and calls that end a stage (`run_erc`, `run_drc`, `auto_route`, `export_manufacturing`) name the
+and calls that end a stage (`run_erc`, `run_drc`, `auto_route`, `design_board`, `export_manufacturing`) name the
 review agent to run next.
 
 ## Connection and project
@@ -51,9 +51,18 @@ review agent to run next.
 | `add_board_outline` | Draw the board outline as a rectangle in mm with optional rounded corners (replaces the existing outline unless replace is false). Size the board from its parts first; 2-3 mm corner radius looks finished. |
 | `add_mounting_holes` | Place mounting holes (mm): M3 = 3.2 mm drill with a 6 mm plated pad by default; set plated false for a bare hole, or a net (GND) to ground the pad. |
 | `set_copper_layers` | Set the PCB's copper layer count (2, 4, 6, ...). |
-| `get_design_rules` | The PCB's current rule set: clearances, track widths, via sizes, net classes, differential pairs and net rules. Change rules in EasyEDA's Design Rules dialog or with run_script. |
+| `get_design_rules` | The PCB's current rule set: clearances, track widths, via sizes, net classes, differential pairs and net rules. Read it before set_design_rules. |
+| `set_design_rules` | Change the current rule set: patch is merged into the configuration that get_design_rules returns (same keys and units), then written back. Change only the keys you read; check with run_drc afterwards. |
 | `create_net_class` | Create a net class (or add nets to an existing one), e.g. POWER for wide tracks. |
 | `create_differential_pair` | Declare a differential pair (USB D+/D-, Ethernet, ...) so EasyEDA routes and checks it as a pair. |
+
+## Whole-board layout
+
+| Tool | What it does |
+|---|---|
+| `design_board` | Lay out the whole board in one call: import the schematic, set the layer count, draw a rounded outline sized from the parts (or width_mm × height_mm), optional M3 corner holes, smart_place, ground pours on both sides, autoroute the rest, rebuild pours, DRC, audit_layout and save. Returns every step and what is left to fix. Route power and sensitive nets by hand afterwards where the report says so. |
+| `smart_place` | Professional placement in one call, computed by SETU (not EasyEDA's auto layout): connectors and switches on the nearest board edge, wireless modules on an edge, ICs where the schematic put them, decoupling caps and crystals packed next to the IC they serve, every other part beside what it connects to, then a wirelength-reducing pass. Locked parts and parts in keep stay put. Needs a board outline; without one it returns the board size to draw. dry_run returns the plan without moving anything. |
+| `audit_layout` | Check the placement like a senior layout reviewer: parts off the board or too close to its edge, overlapping footprints, connectors and wireless modules away from an edge, decoupling caps too far from their IC, crystals too far from their clock pins, and the total wirelength. Returns a score out of 100 and every finding with its fix. |
 
 ## Placement and routing
 
@@ -61,10 +70,11 @@ review agent to run next.
 |---|---|
 | `list_pcb_components` | Every footprint on the PCB: designator, position (mm), rotation, side, footprint, LCSC number and lock state. |
 | `set_component_placements` | Move, rotate, flip (layer top/bottom) or lock many footprints in one call. Positions in mm in the board's coordinates from list_pcb_components. |
-| `auto_place` | EasyEDA's automatic placement. A first draft only: always review it against the layout skill (connectors on edges, loops tight, blocks together) and fix by hand with set_component_placements. |
+| `auto_place` | EasyEDA's own automatic placement. Prefer smart_place; if you use this, review it against the layout skill and fix by hand with set_component_placements. |
 | `add_track` | Route a copper track as a polyline of [x, y] points in mm on one layer, for one net. Size power widths with calc_trace_width first. |
 | `add_vias` | Place vias (mm). Defaults 0.3 mm drill / 0.6 mm diameter, which every fab builds. |
 | `add_copper_pour` | Add a copper pour (zone) for a net on a layer. Without points it covers the board outline, inset by inset_mm. |
+| `rebuild_pours` | Rebuild (refill) every copper pour after moving parts or routing, so pours follow the new copper and clear keep-outs. |
 | `auto_route` | EasyEDA's autorouter. Route power and sensitive nets by hand first, then route the rest here with keep_existing true. Optional: nets, ignore_nets, layers, priority completion/speed. |
 | `delete_pcb_items` | Delete PCB tracks, vias, pours, texts or footprints by id, or rip up every track and via of a net. |
 
@@ -84,7 +94,7 @@ review agent to run next.
 | `calc_trace_width` | Size a copper trace for a current (IPC-2221 closed form). Returns the minimum width for the allowed temperature rise, plus resistance, voltage drop and power loss when a length is given. IPC-2221 is conservative for internal layers; IPC-2152 charts usually allow narrower internal traces. Also answers the reverse question: pass width_mm instead of current_a to get the safe current. |
 | `calc_via` | Via electrical properties: barrel resistance, inductance (Goldfarb), current capacity (IPC-2221 external constant applied to the plated barrel), and how many vias in parallel carry a given current. |
 | `calc_impedance` | Characteristic impedance of a trace: microstrip (Hammerstad–Jensen with thickness correction, ≤1%), centred or offset stripline (Wheeler / IPC-2141A, ≈0.5–2%), grounded coplanar waveguide (conformal mapping, zero thickness), and edge-coupled differential pairs (IPC-2141 coupling estimate, ±5–10%). Give geometry directly, or a stackup preset from list_stackups plus a copper layer and the tool derives heights, εr and copper. Set target_ohm to solve for the trace width instead. Results exclude solder mask, which lowers outer-layer impedance by roughly 1–3 Ω. |
-| `list_stackups` | List the stackup presets calc_impedance accepts: JLCPCB 4- and 6-layer impedance templates and a generic 2-layer board, with every copper and dielectric thickness and εr. To use a board's own stackup instead, read it with the board stackup tools and pass height_mm / er / thickness_mm to calc_impedance. |
+| `list_stackups` | List the stackup presets calc_impedance accepts: JLCPCB 4- and 6-layer impedance templates and a generic 2-layer board, with every copper and dielectric thickness and εr. To use a board's own stackup instead, read it with get_board_info and pass height_mm / er / thickness_mm to calc_impedance. |
 | `calc_buck` | Size a buck converter's inductor and capacitors from first principles (continuous conduction): L = Vout·(Vin_max−Vout)/(Vin_max·fsw·ΔIL), peak current, Cout for the ripple target, maximum output-capacitor ESR, and worst-case input RMS current. The regulator datasheet's recommended values take precedence — use this to check them or when the datasheet leaves the choice open. |
 | `calc_regulator_thermal` | Linear-regulator (LDO) power dissipation and junction temperature: Pd = (Vin−Vout)·Iout + Vin·Iq, Tj = Ta + Pd·θJA. θJA must come from the part's datasheet for the copper area you will actually provide. Flags dropout violations and returns the maximum safe current at the given θJA. |
 | `calc_divider` | Pick standard-value resistors for a voltage divider or a regulator feedback network. Searches every pair in the chosen E-series and resistance range and returns the best pairs with their exact output and error. mode 'divider': Vout = Vin·Rbot/(Rtop+Rbot). mode 'feedback': Vout = Vref·(1 + Rtop/Rbot) — pass vref from the regulator datasheet. |

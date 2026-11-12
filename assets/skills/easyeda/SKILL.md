@@ -51,9 +51,10 @@ Never guess a project's contents: read it with `get_project_info`,
 | Project | `setu_status`, `select_window`, `get_project_info`, `open_document`, `save_project`, `backup_project` |
 | Parts | `search_parts`, `get_parts_by_lcsc` (LCSC numbers → EasyEDA devices with symbol and footprint) |
 | Schematic | `place_schematic_component`, `modify_schematic_component`, `get_component_pins`, `add_wires`, `add_net_flags`, `add_schematic_text`, `delete_schematic_items`, `list_schematic_components`, `list_nets`, `get_netlist`, `run_erc`, `export_schematic` |
-| Board setup | `import_changes_to_pcb`, `add_board_outline`, `add_mounting_holes`, `set_copper_layers`, `get_design_rules`, `create_net_class`, `create_differential_pair`, `get_board_info` |
-| Placement | `list_pcb_components`, `set_component_placements`, `auto_place` (draft only) |
-| Routing | `add_track`, `add_vias`, `add_copper_pour`, `auto_route`, `delete_pcb_items`, `list_nets` |
+| Board setup | `import_changes_to_pcb`, `add_board_outline`, `add_mounting_holes`, `set_copper_layers`, `get_design_rules`, `set_design_rules`, `create_net_class`, `create_differential_pair`, `get_board_info` |
+| Whole board | `design_board` (outline → placement → pours → routing → checks in one call), `smart_place`, `audit_layout` |
+| Placement | `list_pcb_components`, `set_component_placements`, `smart_place`, `auto_place` (draft only) |
+| Routing | `add_track`, `add_vias`, `add_copper_pour`, `rebuild_pours`, `auto_route`, `delete_pcb_items`, `list_nets` |
 | Silkscreen | `add_board_text` |
 | Checks | `run_erc`, `run_drc`, `get_netlist`, `view_design` |
 | Files | `export_manufacturing`, `export_schematic`, `backup_project` |

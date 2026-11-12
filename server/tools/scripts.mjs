@@ -1,4 +1,4 @@
-pub const PRELUDE: &str = r#"
+export const PRELUDE = String.raw`
 const S = {};
 S.mil = v => v / 0.0254;
 S.mm = v => Math.round(v * 0.0254 * 1000) / 1000;
@@ -74,9 +74,9 @@ S.device = async a => {
   if (a.uuid && a.library_uuid) return { libraryUuid: a.library_uuid, uuid: a.uuid };
   throw new Error('Pass lcsc, or uuid with library_uuid (from search_parts).');
 };
-"#;
+`;
 
-pub const PROJECT_INFO: &str = r#"
+export const PROJECT_INFO = String.raw`
 const p = await eda.dmt_Project.getCurrentProjectInfo();
 const pages = await eda.dmt_Schematic.getAllSchematicPagesInfo();
 return {
@@ -87,38 +87,38 @@ return {
   pcbs: S.plain(await eda.dmt_Pcb.getAllPcbsInfo()),
   currentDocument: S.plain(await S.doc())
 };
-"#;
+`;
 
-pub const OPEN_DOCUMENT: &str = r#"
+export const OPEN_DOCUMENT = String.raw`
 const tab = await eda.dmt_EditorControl.openDocument(A.uuid);
 if (!tab) throw new Error('EasyEDA could not open document ' + A.uuid);
 return { tabId: tab, document: S.plain(await S.doc()) };
-"#;
+`;
 
-pub const SAVE: &str = r#"
+export const SAVE = String.raw`
 const done = {};
 if (A.target !== 'pcb') { await S.sch(); done.schematic = await eda.sch_Document.save(); }
 if (A.target !== 'schematic') { const all = await eda.dmt_Pcb.getAllPcbsInfo(); if (all && all.length) { await S.pcb(); done.pcb = await eda.pcb_Document.save(); } }
 return done;
-"#;
+`;
 
-pub const SEARCH_PARTS: &str = r#"
+export const SEARCH_PARTS = String.raw`
 const r = await eda.lib_Device.search(A.query, undefined, undefined, undefined, A.limit ?? 10, A.page ?? 1);
 return (r || []).map(d => ({ uuid: d.uuid, library_uuid: d.libraryUuid, name: d.name, description: d.description, footprint: d.footprintName || (d.footprint || {}).name, symbol: d.symbolName || (d.symbol || {}).name, properties: d.otherProperty }));
-"#;
+`;
 
-pub const PARTS_BY_LCSC: &str = r#"
+export const PARTS_BY_LCSC = String.raw`
 const r = await eda.lib_Device.getByLcscIds(A.lcsc, undefined, true);
 return (r || []).map(d => ({ uuid: d.uuid, library_uuid: d.libraryUuid, name: d.name, description: d.description, footprint: d.footprintName || (d.footprint || {}).name, properties: d.otherProperty }));
-"#;
+`;
 
-pub const LIST_SCH_COMPONENTS: &str = r#"
+export const LIST_SCH_COMPONENTS = String.raw`
 await S.sch();
 const all = await eda.sch_PrimitiveComponent.getAll(undefined, A.all_pages !== false);
 return all.filter(c => A.include_flags || c.getState_ComponentType() === 'part').map(S.schPart);
-"#;
+`;
 
-pub const PINS: &str = r#"
+export const PINS = String.raw`
 if (A.side === 'pcb') {
   await S.pcb();
   const c = await S.findPcb(A.designator);
@@ -128,9 +128,9 @@ await S.sch();
 const c = await S.findSch({ designator: A.designator, id: A.id });
 const pins = await eda.sch_PrimitiveComponent.getAllPinsByPrimitiveId(c.getState_PrimitiveId());
 return { designator: c.getState_Designator(), pins: (pins || []).map(p => ({ id: p.getState_PrimitiveId(), number: p.getState_PinNumber(), name: p.getState_PinName(), x: p.getState_X(), y: p.getState_Y(), rotation: p.getState_Rotation(), noConnect: p.getState_NoConnected() })) };
-"#;
+`;
 
-pub const PLACE_SCH_COMPONENT: &str = r#"
+export const PLACE_SCH_COMPONENT = String.raw`
 await S.sch();
 const dev = await S.device(A);
 const c = await eda.sch_PrimitiveComponent.create(dev, A.x, A.y, A.sub_part, A.rotation ?? 0, !!A.mirror, A.add_to_bom !== false, A.add_to_pcb !== false);
@@ -140,9 +140,9 @@ if (A.designator) {
   return S.schPart(m || c);
 }
 return S.schPart(c);
-"#;
+`;
 
-pub const MODIFY_SCH_COMPONENT: &str = r#"
+export const MODIFY_SCH_COMPONENT = String.raw`
 await S.sch();
 const c = await S.findSch({ designator: A.designator, id: A.id });
 const p = {};
@@ -156,9 +156,9 @@ if (A.properties) p.otherProperty = Object.assign({}, c.getState_OtherProperty()
 const m = await eda.sch_PrimitiveComponent.modify(c.getState_PrimitiveId(), p);
 if (!m) throw new Error('EasyEDA refused the change');
 return S.schPart(m);
-"#;
+`;
 
-pub const ADD_WIRE: &str = r#"
+export const ADD_WIRE = String.raw`
 await S.sch();
 const made = [];
 for (const path of A.wires) {
@@ -167,9 +167,9 @@ for (const path of A.wires) {
   made.push(w.getState_PrimitiveId());
 }
 return { wires: made };
-"#;
+`;
 
-pub const ADD_NET_FLAG: &str = r#"
+export const ADD_NET_FLAG = String.raw`
 await S.sch();
 const kinds = { power: 'Power', ground: 'Ground', analog_ground: 'AnalogGround', protect_ground: 'ProtectGround' };
 const made = [];
@@ -186,9 +186,9 @@ for (const f of A.flags) {
   made.push(S.schPart(c));
 }
 return made;
-"#;
+`;
 
-pub const DELETE_SCH: &str = r#"
+export const DELETE_SCH = String.raw`
 await S.sch();
 const kinds = [eda.sch_PrimitiveComponent, eda.sch_PrimitiveWire, eda.sch_PrimitiveText, eda.sch_PrimitiveBus];
 let deleted = 0;
@@ -198,16 +198,16 @@ for (const id of A.ids) {
   }
 }
 return { deleted, requested: A.ids.length };
-"#;
+`;
 
-pub const RUN_ERC: &str = r#"
+export const RUN_ERC = String.raw`
 await S.sch();
 const r = await eda.sch_Drc.check(A.strict !== false, false, true);
 const list = (r || []).map(e => ({ type: e.type, rule: e.rule, net: e.net, message: e.message || e.msg, primitives: (e.primitives || []).map(p => p.primitiveId || p.id || p.designator || p) }));
 return { errors: list.filter(e => e.type !== 'warn').length, warnings: list.filter(e => e.type === 'warn').length, items: list.slice(0, A.limit ?? 200) };
-"#;
+`;
 
-pub const LIST_NETS: &str = r#"
+export const LIST_NETS = String.raw`
 if (A.side === 'pcb') {
   await S.pcb();
   const nets = await eda.pcb_Net.getAllNets();
@@ -215,21 +215,21 @@ if (A.side === 'pcb') {
 }
 await S.sch();
 return S.plain(await eda.sch_Net.getAllNets());
-"#;
+`;
 
-pub const NETLIST: &str = r#"
+export const NETLIST = String.raw`
 if (A.side === 'pcb') { await S.pcb(); return await eda.pcb_Net.getNetlist(); }
 await S.sch();
 return await eda.sch_Netlist.getNetlist();
-"#;
+`;
 
-pub const IMPORT_CHANGES: &str = r#"
+export const IMPORT_CHANGES = String.raw`
 await S.pcb();
 const ok = await eda.pcb_Document.importChanges();
 return { imported: ok, components: (await eda.pcb_PrimitiveComponent.getAll()).length };
-"#;
+`;
 
-pub const BOARD_INFO: &str = r#"
+export const BOARD_INFO = String.raw`
 await S.pcb();
 const outline = S.layer('outline');
 const ids = [];
@@ -251,15 +251,15 @@ return {
   bottom: parts.filter(p => S.layerName(p.getState_Layer()) === 'bottom').length,
   nets: ((await eda.pcb_Net.getAllNetsName()) || []).length
 };
-"#;
+`;
 
-pub const LIST_PCB_COMPONENTS: &str = r#"
+export const LIST_PCB_COMPONENTS = String.raw`
 await S.pcb();
 const all = await eda.pcb_PrimitiveComponent.getAll(A.layer ? S.layer(A.layer) : undefined);
 return all.map(S.pcbPart);
-"#;
+`;
 
-pub const SET_PLACEMENTS: &str = r#"
+export const SET_PLACEMENTS = String.raw`
 await S.pcb();
 const all = await eda.pcb_PrimitiveComponent.getAll();
 const byRef = new Map(all.map(c => [c.getState_Designator(), c]));
@@ -278,9 +278,9 @@ for (const p of A.placements) {
   moved.push(S.pcbPart(m));
 }
 return { moved, missing };
-"#;
+`;
 
-pub const ADD_TRACK: &str = r#"
+export const ADD_TRACK = String.raw`
 await S.pcb();
 const layer = S.layer(A.layer);
 const ids = [];
@@ -291,9 +291,9 @@ for (let i = 1; i < A.points.length; i++) {
   ids.push(t.getState_PrimitiveId());
 }
 return { segments: ids };
-"#;
+`;
 
-pub const ADD_VIA: &str = r#"
+export const ADD_VIA = String.raw`
 await S.pcb();
 const ids = [];
 for (const v of A.vias) {
@@ -302,9 +302,9 @@ for (const v of A.vias) {
   ids.push(p.getState_PrimitiveId());
 }
 return { vias: ids };
-"#;
+`;
 
-pub const ADD_POUR: &str = r#"
+export const ADD_POUR = String.raw`
 await S.pcb();
 let pts = A.points;
 if (!pts) {
@@ -325,9 +325,9 @@ if (!poly) throw new Error('Invalid pour outline');
 const p = await eda.pcb_PrimitivePour.create(A.net, S.layer(A.layer), poly, undefined, true, A.name ?? (A.net + '_' + A.layer), A.priority ?? 1, S.mil(0.25), false);
 if (!p) throw new Error('EasyEDA did not create the pour');
 return { pour: p.getState_PrimitiveId(), points_mm: pts };
-"#;
+`;
 
-pub const ADD_BOARD_TEXT: &str = r#"
+export const ADD_BOARD_TEXT = String.raw`
 await S.pcb();
 const E = globalThis.EPCB_PrimitiveStringAlignMode || {};
 const align = { center: E.CENTER ?? 5, left: E.LEFT_MIDDLE ?? 2, right: E.RIGHT_MIDDLE ?? 8 }[A.align ?? 'center'];
@@ -341,9 +341,9 @@ for (const t of A.texts) {
   made.push(s.getState_PrimitiveId());
 }
 return { texts: made };
-"#;
+`;
 
-pub const DELETE_PCB: &str = r#"
+export const DELETE_PCB = String.raw`
 await S.pcb();
 const kinds = [eda.pcb_PrimitiveLine, eda.pcb_PrimitiveVia, eda.pcb_PrimitiveArc, eda.pcb_PrimitivePolyline, eda.pcb_PrimitivePour, eda.pcb_PrimitiveFill, eda.pcb_PrimitiveString, eda.pcb_PrimitiveRegion, eda.pcb_PrimitiveComponent];
 let deleted = 0;
@@ -359,9 +359,9 @@ for (const id of ids) {
   }
 }
 return { deleted, requested: ids.length };
-"#;
+`;
 
-pub const RUN_DRC: &str = r#"
+export const RUN_DRC = String.raw`
 await S.pcb();
 const r = await eda.pcb_Drc.check(A.strict !== false, false, true);
 const flat = [];
@@ -372,9 +372,9 @@ const walk = (v, path) => {
 };
 walk(r, '');
 return { violations: flat.length, items: flat.slice(0, A.limit ?? 200) };
-"#;
+`;
 
-pub const AUTO_ROUTE: &str = r#"
+export const AUTO_ROUTE = String.raw`
 await S.pcb();
 const M = globalThis.EPCB_AutoRoutingExistingPrimitiveMode || {};
 const O = globalThis.EPCB_AutoRoutingOptimization || {};
@@ -383,19 +383,19 @@ if (A.nets) props.RoutingNets = A.nets;
 if (A.ignore_nets) props.ignoreNets = A.ignore_nets;
 if (A.layers) props.layers = A.layers.map(S.layer);
 return S.plain(await eda.pcb_Document.autoRouting(props));
-"#;
+`;
 
-pub const AUTO_PLACE: &str = r#"
+export const AUTO_PLACE = String.raw`
 await S.pcb();
 return S.plain(await eda.pcb_Document.autoLayout());
-"#;
+`;
 
-pub const SET_COPPER_LAYERS: &str = r#"
+export const SET_COPPER_LAYERS = String.raw`
 await S.pcb();
 return { ok: await eda.pcb_Layer.setTheNumberOfCopperLayers(A.count) };
-"#;
+`;
 
-pub const DESIGN_RULES: &str = r#"
+export const DESIGN_RULES = String.raw`
 await S.pcb();
 return {
   configuration: await eda.pcb_Drc.getCurrentRuleConfigurationName(),
@@ -404,21 +404,21 @@ return {
   differential_pairs: S.plain(await eda.pcb_Drc.getAllDifferentialPairs()),
   net_rules: S.plain(await eda.pcb_Drc.getNetRules())
 };
-"#;
+`;
 
-pub const NET_CLASS: &str = r#"
+export const NET_CLASS = String.raw`
 await S.pcb();
 const existing = (await eda.pcb_Drc.getAllNetClasses()) || [];
 if (existing.some(c => (c.name || c.netClassName) === A.name)) return { added: await eda.pcb_Drc.addNetToNetClass(A.name, A.nets) };
 return { created: await eda.pcb_Drc.createNetClass(A.name, A.nets, null) };
-"#;
+`;
 
-pub const DIFF_PAIR: &str = r#"
+export const DIFF_PAIR = String.raw`
 await S.pcb();
 return { created: await eda.pcb_Drc.createDifferentialPair(A.name, A.positive, A.negative) };
-"#;
+`;
 
-pub const SCREENSHOT: &str = r#"
+export const SCREENSHOT = String.raw`
 const view = A.view ?? 'pcb';
 if (view === 'pcb') { await S.pcb(); await eda.pcb_Document.zoomToBoardOutline(); }
 if (view === 'schematic') { await S.sch(); await eda.dmt_EditorControl.zoomToAllPrimitives(); }
@@ -427,9 +427,9 @@ const d = await S.doc();
 const img = await eda.dmt_EditorControl.getCurrentRenderedAreaImage(d && d.tabId);
 if (!img) throw new Error('EasyEDA returned no image');
 return { mime: img.type || 'image/png', base64: await S.b64(img) };
-"#;
+`;
 
-pub const EXPORT_MANUFACTURING: &str = r#"
+export const EXPORT_MANUFACTURING = String.raw`
 await S.pcb();
 const name = A.name || 'board';
 const want = new Set(A.formats || ['gerber', 'bom', 'pick_and_place']);
@@ -444,23 +444,23 @@ if (want.has('netlist')) files.push(await S.file(await eda.pcb_ManufactureData.g
 if (want.has('pdf')) files.push(await S.file(await eda.pcb_ManufactureData.getPdfFile(name), name + '.pdf'));
 if (want.has('dxf')) files.push(await S.file(await eda.pcb_ManufactureData.getDxfFile(name), name + '.dxf'));
 return { files };
-"#;
+`;
 
-pub const EXPORT_SCHEMATIC: &str = r#"
+export const EXPORT_SCHEMATIC = String.raw`
 await S.sch();
 const name = A.name || 'schematic';
 const f = A.format === 'png' ? await eda.sch_ManufactureData.getPngFile(name) : await eda.sch_ManufactureData.getSvgFile(name);
 return { files: [await S.file(f, name + '.' + (A.format === 'png' ? 'png' : 'svg'))] };
-"#;
+`;
 
-pub const PROJECT_BACKUP: &str = r#"
+export const PROJECT_BACKUP = String.raw`
 const p = await eda.dmt_Project.getCurrentProjectInfo();
 const name = (A.name || (p && (p.friendlyName || p.name)) || 'project').replace(/[^A-Za-z0-9 _.-]/g, '_');
 const f = await eda.sys_FileManager.getProjectFile(name, undefined, 'epro');
 return { files: [await S.file(f, name + '.epro')] };
-"#;
+`;
 
-pub const BOARD_OUTLINE: &str = r#"
+export const BOARD_OUTLINE = String.raw`
 await S.pcb();
 const outline = S.layer('outline');
 let removed = 0;
@@ -482,9 +482,9 @@ const poly = eda.pcb_MathPolygon.createPolygon(src);
 const p = await eda.pcb_PrimitivePolyline.create('', outline, poly, S.mil(0.1), false);
 if (!p) throw new Error('EasyEDA did not draw the outline');
 return { outline: p.getState_PrimitiveId(), width_mm: w, height_mm: h, corner_radius_mm: r, replaced: removed };
-"#;
+`;
 
-pub const MOUNTING_HOLES: &str = r#"
+export const MOUNTING_HOLES = String.raw`
 await S.pcb();
 const SH = globalThis.EPCB_PrimitivePadShapeType || {};
 const HT = globalThis.EPCB_PrimitivePadHoleType || {};
@@ -498,9 +498,9 @@ for (const hole of A.holes) {
   made.push(p.getState_PrimitiveId());
 }
 return { holes: made };
-"#;
+`;
 
-pub const SCH_TEXT: &str = r#"
+export const SCH_TEXT = String.raw`
 await S.sch();
 const made = [];
 for (const t of A.texts) {
@@ -509,4 +509,43 @@ for (const t of A.texts) {
   made.push(p.getState_PrimitiveId());
 }
 return { texts: made };
-"#;
+`;
+
+export const READ_BOARD = String.raw`
+await S.pcb();
+const outline = S.layer('outline');
+const ids = [];
+for (const k of [eda.pcb_PrimitiveLine, eda.pcb_PrimitivePolyline, eda.pcb_PrimitiveArc]) {
+  try { ids.push(...(await k.getAllPrimitiveId(undefined, outline)) || []); } catch (e) {}
+}
+const ob = ids.length ? await eda.pcb_Primitive.getPrimitivesBBox(ids) : undefined;
+const box = b => b ? { minX: S.mm(b.minX), minY: S.mm(b.minY), maxX: S.mm(b.maxX), maxY: S.mm(b.maxY) } : null;
+const parts = [];
+for (const c of await eda.pcb_PrimitiveComponent.getAll()) {
+  const p = S.pcbPart(c);
+  let b;
+  try { b = await eda.pcb_Primitive.getPrimitivesBBox([p.id]); } catch (e) {}
+  p.bbox = box(b);
+  p.pads = (c.getState_Pads() || []).map(x => ({ net: x.net, number: x.padNumber }));
+  parts.push(p);
+}
+return { board: box(ob), parts };
+`;
+
+export const REBUILD_POURS = String.raw`
+await S.pcb();
+const pours = (await eda.pcb_PrimitivePour.getAll()) || [];
+let rebuilt = 0;
+for (const p of pours) { try { if (await p.rebuildCopperRegion()) rebuilt++; } catch (e) {} }
+return { pours: pours.length, rebuilt };
+`;
+
+export const SET_RULES = String.raw`
+await S.pcb();
+const cur = S.plain(await eda.pcb_Drc.getCurrentRuleConfiguration()) || {};
+const merge = (t, s) => { for (const k of Object.keys(s)) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && t[k] && typeof t[k] === 'object') merge(t[k], s[k]); else t[k] = s[k]; } return t; };
+const next = merge(cur, A.patch);
+const ok = await eda.pcb_Drc.overwriteCurrentRuleConfiguration(next);
+if (!ok) throw new Error('EasyEDA refused the rule change');
+return { applied: true, configuration: await eda.pcb_Drc.getCurrentRuleConfigurationName() };
+`;

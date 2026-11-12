@@ -33,7 +33,7 @@ silkscreen.
    calculations (`calc_trace_width`, `calc_via`).
 4. `list_schematic_components` and `get_netlist` — every IC's supply, decoupling and unused pins
    as its datasheet states; no rails joined; DNP out of the BOM.
-5. `list_pcb_components` — every part placed, on the intended side, connectors on edges,
+5. `audit_layout` and `list_pcb_components` — every part placed, on the intended side, connectors on edges,
    switching-loop capacitors at their IC's pins, decoupling within 3 mm.
 6. `list_nets` (side pcb) — differential pair and matched-group lengths.
 7. `view_design` (pcb) — placement by function, loops tight, ground pours unbroken, crystals and

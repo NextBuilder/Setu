@@ -8,42 +8,33 @@ on:
 permissions:
   contents: read
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
   test:
-    name: Test (${{ matrix.os }})
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ["18", "22"]
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
         with:
-          toolchain: "1.96.0"
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Format
-        run: cargo fmt --all --check
-      - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+          node-version: ${{ matrix.node }}
       - name: Tests
-        run: cargo test
+        run: node --test
 
   plugin:
-    name: Plugin is up to date
+    name: Plugin and docs are up to date
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: python packaging/build-claude-plugin.py --check
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-      - name: Launcher parses
-        run: node --check claude-plugin/start.mjs
+          node-version: "22"
+      - run: python packaging/build-claude-plugin.py --check
+      - run: node scripts/tools-doc.mjs --check

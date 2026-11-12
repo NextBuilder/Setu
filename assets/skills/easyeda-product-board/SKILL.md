@@ -87,8 +87,8 @@ and USB/DiffPair at least, with their widths in the Design Rules dialog.
 - Decoupling within 2–3 mm of each power pin; crystal and its load caps within 3 mm of the MCU.
 - Power stage (charger, regulator, MOSFETs) grouped near the power input, heat-making parts
   away from sensors (temperature, humidity, IMU).
-- Rows of identical parts aligned and evenly spaced; then `auto_place` (mode improve) to
-  shorten the ratsnest without breaking the arrangement.
+- Rows of identical parts aligned and evenly spaced; lock them, then `smart_place` with them in
+  `keep` places the rest without breaking the arrangement; check with `audit_layout`.
 
 ## 5. Copper (Gate 5)
 
