@@ -14,7 +14,9 @@ else if (arg === "bridge") {
   console.log(JSON.stringify(await b.status()));
 } else {
   const bridge = new Bridge();
-  serveStdio(new Server({ bridge })).on("close", () => {
+  const rl = serveStdio(new Server({ bridge }));
+  rl.on("close", async () => {
+    await rl.drain();
     bridge.stop();
     process.exit(0);
   });

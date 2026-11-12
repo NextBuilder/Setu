@@ -62,7 +62,8 @@ export class Server {
 export function serveStdio(server, input = process.stdin, output = process.stdout) {
   const write = (v) => output.write(JSON.stringify(v) + "\n");
   const rl = createInterface({ input });
-  rl.on("line", async (line) => {
+  const pending = new Set();
+  rl.on("line", (line) => {
     if (!line.trim()) return;
     let msg;
     try {
@@ -70,8 +71,10 @@ export function serveStdio(server, input = process.stdin, output = process.stdou
     } catch (e) {
       return write({ jsonrpc: "2.0", id: null, error: { code: -32700, message: e.message } });
     }
-    const reply = await server.handle(msg);
-    if (reply) write(reply);
+    const job = server.handle(msg).then((reply) => reply && write(reply)).catch(() => {});
+    pending.add(job);
+    job.finally(() => pending.delete(job));
   });
+  rl.drain = () => Promise.allSettled([...pending]).then(() => new Promise((r) => output.write("", r)));
   return rl;
 }
